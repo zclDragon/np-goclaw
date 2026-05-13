@@ -95,6 +95,7 @@ RUN set -eux; \
         apk add --no-cache python3 py3-pip nodejs npm pandoc github-cli poppler-utils bash; \
         apk add --no-cache --virtual .build-deps gcc musl-dev libxml2-dev libxslt-dev python3-dev; \
         pip3 install --no-cache-dir --break-system-packages \
+            -i https://pypi.tuna.tsinghua.edu.cn/simple \
             -r /tmp/requirements-base.txt -r /tmp/requirements-skills.txt; \
         apk del --no-cache .build-deps; \
         npm install -g --cache /tmp/npm-cache docx@^9.6.1 pptxgenjs@^4.0.1; \
@@ -103,6 +104,7 @@ RUN set -eux; \
         if [ "$ENABLE_PYTHON" = "true" ]; then \
             apk add --no-cache python3 py3-pip; \
             pip3 install --no-cache-dir --break-system-packages \
+                -i https://pypi.tuna.tsinghua.edu.cn/simple \
                 -r /tmp/requirements-base.txt; \
         fi; \
         if [ "$ENABLE_NODE" = "true" ] || [ "$ENABLE_CLAUDE_CLI" = "true" ]; then \
