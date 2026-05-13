@@ -65,7 +65,7 @@ services:
       - SETGID
       - CHOWN
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=256m
+      - /tmp:rw,noexec,nosuid,size=1g
     deploy:
       resources:
         limits:
