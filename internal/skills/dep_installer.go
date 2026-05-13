@@ -69,7 +69,7 @@ func InstallSingleDep(ctx context.Context, dep string) (bool, string) {
 		return true, ""
 	case strings.HasPrefix(dep, "pip:"):
 		pkg := strings.TrimPrefix(dep, "pip:")
-		cmd := exec.CommandContext(ctx, "pip3", "install", "--no-cache-dir", "--break-system-packages", pkg)
+		cmd := exec.CommandContext(ctx, "pip3", "install", "--no-cache-dir", "--break-system-packages", "-i", "https://pypi.tuna.tsinghua.edu.cn/simple", pkg)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			msg := fmt.Sprintf("%s: %v", strings.TrimSpace(string(out)), err)
@@ -142,7 +142,7 @@ func InstallDeps(ctx context.Context, manifest *SkillManifest, missing []string)
 		slog.Info("skills: installing pip packages", "pkgs", pipPkgs)
 		var successful []string
 		for _, pkg := range pipPkgs {
-			cmd := exec.CommandContext(ctx, "pip3", "install", "--no-cache-dir", "--break-system-packages", pkg)
+			cmd := exec.CommandContext(ctx, "pip3", "install", "--no-cache-dir", "--break-system-packages", "-i", "https://pypi.tuna.tsinghua.edu.cn/simple", pkg)
 			if out, err := cmd.CombinedOutput(); err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("pip %s: %s (%v)", pkg, strings.TrimSpace(string(out)), err))
 				if hint := pipBuildFailHint(pkg, string(out)); hint != "" {
