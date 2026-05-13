@@ -63,7 +63,8 @@ version-file:
 
 # Pull latest published image (if changed) and start. Use for deploy/update flows.
 up: version-file
-	GOCLAW_VERSION=$(VERSION) $(COMPOSE) up -d --pull always
+# 	GOCLAW_VERSION=$(VERSION) $(COMPOSE) up -d --pull always
+	GOCLAW_VERSION=$(VERSION) $(COMPOSE) up -d --pull missing
 	$(UPGRADE) run --rm upgrade
 
 # Build image from local source (with pulled base layers), then start. Use for dev changes.

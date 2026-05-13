@@ -26,6 +26,8 @@ FROM embedui-${ENABLE_EMBEDUI} AS web-dist
 # ── Stage 1: Build Go ──
 FROM golang:1.26-bookworm AS builder
 
+ENV GOPROXY=https://goproxy.cn,https://proxy.golang.org,direct
+
 WORKDIR /src
 
 # Cache dependencies
@@ -84,14 +86,17 @@ COPY docker/requirements-base.txt docker/requirements-skills.txt /tmp/
 # ENABLE_FULL_SKILLS=true pre-installs all skill deps (larger image, no on-demand install needed).
 # Otherwise, skill packages are installed on-demand via the admin UI.
 RUN set -eux; \
+    sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.aliyun.com/alpine#g' /etc/apk/repositories; \
     apk add --no-cache ca-certificates wget su-exec; \
     if [ "$ENABLE_SANDBOX" = "true" ]; then \
         apk add --no-cache docker-cli; \
     fi; \
     if [ "$ENABLE_FULL_SKILLS" = "true" ]; then \
         apk add --no-cache python3 py3-pip nodejs npm pandoc github-cli poppler-utils bash; \
+        apk add --no-cache --virtual .build-deps gcc musl-dev libxml2-dev libxslt-dev python3-dev; \
         pip3 install --no-cache-dir --break-system-packages \
             -r /tmp/requirements-base.txt -r /tmp/requirements-skills.txt; \
+        apk del --no-cache .build-deps; \
         npm install -g --cache /tmp/npm-cache docx@^9.6.1 pptxgenjs@^4.0.1; \
         rm -rf /tmp/npm-cache /root/.cache /var/cache/apk/*; \
     else \

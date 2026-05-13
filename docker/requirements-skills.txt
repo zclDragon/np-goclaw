@@ -13,7 +13,7 @@ pdf2image~=1.17.0
 markitdown<0.2.0
 
 # Data & XML
-pandas~=3.0.2
+pandas~=3.0.1
 defusedxml~=0.7.1
 lxml~=6.0.2
 
