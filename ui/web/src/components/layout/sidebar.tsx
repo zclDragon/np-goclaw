@@ -72,7 +72,7 @@ export function Sidebar({ collapsed, onNavItemClick }: SidebarProps) {
           <div className="flex items-center gap-2.5">
             <img src="/goclaw-icon.svg" alt="GoClaw" className="h-8 w-8" />
             <span className="text-lg font-bold tracking-tight text-sidebar-primary">
-              NIPPON AGENTIC OS
+              立邦 AGENTIC OS
             </span>
           </div>
         )}
