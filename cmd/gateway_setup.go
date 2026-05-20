@@ -14,11 +14,11 @@ import (
 	"github.com/nextlevelbuilder/goclaw/internal/bootstrap"
 	"github.com/nextlevelbuilder/goclaw/internal/bus"
 	"github.com/nextlevelbuilder/goclaw/internal/config"
+	"github.com/nextlevelbuilder/goclaw/internal/edition"
 	mcpbridge "github.com/nextlevelbuilder/goclaw/internal/mcp"
 	"github.com/nextlevelbuilder/goclaw/internal/permissions"
 	"github.com/nextlevelbuilder/goclaw/internal/providers"
 	"github.com/nextlevelbuilder/goclaw/internal/sandbox"
-	"github.com/nextlevelbuilder/goclaw/internal/edition"
 	"github.com/nextlevelbuilder/goclaw/internal/skills"
 	"github.com/nextlevelbuilder/goclaw/internal/store"
 	"github.com/nextlevelbuilder/goclaw/internal/store/pg"
@@ -528,8 +528,21 @@ func setupSkillsSystem(
 	if pgStores.Skills != nil {
 		storeDirs := pgStores.Skills.Dirs()
 		if len(storeDirs) > 0 {
-			skillsLoader.SetManagedDir(storeDirs[0])
-			slog.Info("skills-store directory wired into loader", "dir", storeDirs[0])
+			// Collect managed skills dirs: master + all tenant skills-stores
+			allManagedDirs := []string{storeDirs[0]}
+			tenantsDir := filepath.Join(dataDir, "tenants")
+			if tenantEntries, err := os.ReadDir(tenantsDir); err == nil {
+				for _, te := range tenantEntries {
+					if te.IsDir() {
+						tsDir := filepath.Join(tenantsDir, te.Name(), "skills-store")
+						if info, err := os.Stat(tsDir); err == nil && info.IsDir() {
+							allManagedDirs = append(allManagedDirs, tsDir)
+						}
+					}
+				}
+			}
+			skillsLoader.SetManagedDirs(allManagedDirs)
+			slog.Info("skills-store directories wired into loader", "dirs", allManagedDirs)
 
 			// Seed system/bundled skills into DB
 			bundledSkillsDir = os.Getenv("GOCLAW_BUNDLED_SKILLS_DIR")
@@ -603,4 +616,3 @@ func setupSkillsSystem(
 
 	return skillsLoader, skillSearchTool, globalSkillsDir, bundledSkillsDir, builtinSkillsDir
 }
-

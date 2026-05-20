@@ -51,9 +51,9 @@ type Loader struct {
 	globalSkills        string // ~/.goclaw/skills/
 	builtinSkills       string // bundled with binary
 
-	// DB-managed skills directory (set via SetManagedDir).
+	// DB-managed skills directories (set via SetManagedDir/SetManagedDirs).
 	// Uses versioned subdirectory structure: <dir>/<slug>/<version>/SKILL.md
-	managedSkillsDir string
+	managedSkillsDirs []string
 
 	mu    sync.RWMutex
 	cache map[string]*Info // name → info (lazily populated)
@@ -96,8 +96,14 @@ func NewLoader(workspace, globalSkills, builtinSkills string) *Loader {
 // Managed skills use versioned subdirectories: <dir>/<slug>/<version>/SKILL.md.
 // Called after PG stores are created.
 func (l *Loader) SetManagedDir(dir string) {
-	l.managedSkillsDir = dir
-	l.BumpVersion() // trigger re-scan
+	l.SetManagedDirs([]string{dir})
+}
+
+// SetManagedDirs sets multiple managed skills directories (e.g. master + tenants).
+// Directories are scanned in order; same slug in a later dir is skipped.
+func (l *Loader) SetManagedDirs(dirs []string) {
+	l.managedSkillsDirs = dirs
+	l.BumpVersion()
 }
 
 // ListSkills returns all available skills, respecting the priority hierarchy.
@@ -157,8 +163,10 @@ func (l *Loader) ListSkills(_ context.Context) []Info {
 	}
 
 	// Managed skills (versioned, DB-seeded) come before builtin so their workspace paths win.
-	if l.managedSkillsDir != "" {
-		for _, info := range l.listManagedSkills() {
+	// Master skills-store scanned first, then tenant skills-stores.
+	// Same slug in a later dir is skipped (master wins for collisions).
+	for _, dir := range l.managedSkillsDirs {
+		for _, info := range l.listManagedSkillsFromDir(dir) {
 			if seen[info.Slug] {
 				continue
 			}
@@ -203,11 +211,21 @@ func (l *Loader) ListSkills(_ context.Context) []Info {
 	return skills
 }
 
-// listManagedSkills scans the managed skills directory for versioned skill directories.
-// Structure: <managedSkillsDir>/<slug>/<version>/SKILL.md
-// Returns the latest version of each skill found.
+// listManagedSkills scans all managed skills directories for versioned skill directories.
+// Directories are scanned in order; same slug in a later dir is skipped in ListSkills.
 func (l *Loader) listManagedSkills() []Info {
-	dirs, err := os.ReadDir(l.managedSkillsDir)
+	var skills []Info
+	for _, dir := range l.managedSkillsDirs {
+		skills = append(skills, l.listManagedSkillsFromDir(dir)...)
+	}
+	return skills
+}
+
+// listManagedSkillsFromDir scans a single managed skills directory.
+// Structure: <dir>/<slug>/<version>/SKILL.md
+// Returns the latest version of each skill found.
+func (l *Loader) listManagedSkillsFromDir(dir string) []Info {
+	dirs, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
@@ -219,8 +237,7 @@ func (l *Loader) listManagedSkills() []Info {
 		}
 		slug := d.Name()
 
-		// Find the latest version subdirectory
-		latestVersion, latestDir := l.findLatestVersion(slug)
+		latestVersion, latestDir := l.findLatestVersion(dir, slug)
 		if latestVersion < 0 {
 			continue
 		}
@@ -250,8 +267,8 @@ func (l *Loader) listManagedSkills() []Info {
 
 // findLatestVersion finds the highest-numbered version subdirectory for a skill slug.
 // Returns (version, path) or (-1, "") if no valid version found.
-func (l *Loader) findLatestVersion(slug string) (int, string) {
-	slugDir := filepath.Join(l.managedSkillsDir, slug)
+func (l *Loader) findLatestVersion(parentDir, slug string) (int, string) {
+	slugDir := filepath.Join(parentDir, slug)
 	entries, err := os.ReadDir(slugDir)
 	if err != nil {
 		return -1, ""
@@ -297,8 +314,8 @@ func (l *Loader) LoadSkill(_ context.Context, name string) (string, bool) {
 	}
 
 	// Managed skills (DB-seeded, versioned) take priority over raw builtin files.
-	if l.managedSkillsDir != "" {
-		latestVer, latestDir := l.findLatestVersion(name)
+	for _, dir := range l.managedSkillsDirs {
+		latestVer, latestDir := l.findLatestVersion(dir, name)
 		if latestVer >= 0 {
 			path := filepath.Join(latestDir, "SKILL.md")
 			data, err := os.ReadFile(path)
@@ -434,7 +451,12 @@ func (l *Loader) BumpVersion() {
 // Dirs returns all non-empty skill directories (for the watcher to monitor).
 func (l *Loader) Dirs() []string {
 	var dirs []string
-	for _, d := range []string{l.workspaceSkills, l.projectAgentSkills, l.personalAgentSkills, l.globalSkills, l.builtinSkills, l.managedSkillsDir} {
+	for _, d := range []string{l.workspaceSkills, l.projectAgentSkills, l.personalAgentSkills, l.globalSkills, l.builtinSkills} {
+		if d != "" {
+			dirs = append(dirs, d)
+		}
+	}
+	for _, d := range l.managedSkillsDirs {
 		if d != "" {
 			dirs = append(dirs, d)
 		}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -245,21 +244,23 @@ func (h *SkillsHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	depsCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), uploadDepsInstallTimeout)
 	defer cancel()
 
-	manifest := skills.ScanSkillDeps(destDir)
-	if manifest != nil && !manifest.IsEmpty() {
-		if ok, missing := checkUploadedSkillDeps(manifest); !ok {
-			depState = h.reconcileUploadedSkillDeps(
-				depsCtx,
-				slug,
-				manifest,
-				missing,
-				canAutoInstallUploadedSkillDeps(r.Context()),
-			)
-			skill.Status = depState.status
-			skill.MissingDeps = depState.missing
-			maps.Copy(response, depState.response)
+	/*
+		manifest := skills.ScanSkillDeps(destDir)
+		if manifest != nil && !manifest.IsEmpty() {
+			if ok, missing := checkUploadedSkillDeps(manifest); !ok {
+				depState = h.reconcileUploadedSkillDeps(
+					depsCtx,
+					slug,
+					manifest,
+					missing,
+					canAutoInstallUploadedSkillDeps(r.Context()),
+				)
+				skill.Status = depState.status
+				skill.MissingDeps = depState.missing
+				maps.Copy(response, depState.response)
+			}
 		}
-	}
+	*/
 
 	// Use depsCtx (non-cancellable) so the DB write completes even if the
 	// client disconnects during the dep-install window.
