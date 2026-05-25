@@ -16,6 +16,7 @@ import (
 	"github.com/nextlevelbuilder/goclaw/internal/channels/feishu"
 	slackchannel "github.com/nextlevelbuilder/goclaw/internal/channels/slack"
 	"github.com/nextlevelbuilder/goclaw/internal/channels/telegram"
+	"github.com/nextlevelbuilder/goclaw/internal/channels/wecom"
 	"github.com/nextlevelbuilder/goclaw/internal/channels/whatsapp"
 	"github.com/nextlevelbuilder/goclaw/internal/channels/zalo"
 	zalopersonal "github.com/nextlevelbuilder/goclaw/internal/channels/zalo/personal"
@@ -66,6 +67,24 @@ func registerConfigChannels(cfg *config.Config, channelMgr *channels.Manager, ms
 		} else {
 			channelMgr.RegisterChannel(channels.TypeDiscord, dc)
 			slog.Info("discord channel enabled (config)")
+		}
+	}
+
+	if cfg.Channels.WeCom.Enabled {
+		switch {
+		case cfg.Channels.WeCom.BotID == "":
+			recordMissingConfig(channels.TypeWeCom, "Set channels.wecom.bot_id in config.")
+		case cfg.Channels.WeCom.BotSecret == "":
+			recordMissingConfig(channels.TypeWeCom, "Set channels.wecom.bot_secret in config.")
+		default:
+			wc, err := wecom.New(cfg.Channels.WeCom, msgBus, pgStores.Pairing)
+			if err != nil {
+				channelMgr.RecordFailure(channels.TypeWeCom, "", err)
+				slog.Error("failed to initialize wecom channel", "error", err)
+			} else {
+				channelMgr.RegisterChannel(channels.TypeWeCom, wc)
+				slog.Info("wecom channel enabled (config)")
+			}
 		}
 	}
 
@@ -270,4 +289,3 @@ func wireChannelEventSubscribers(
 		})
 	}
 }
-

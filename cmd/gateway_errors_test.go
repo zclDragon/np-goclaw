@@ -28,6 +28,7 @@ func TestIsExternalChannel(t *testing.T) {
 		{"zalo_personal", channels.TypeZaloPersonal, true},
 		{"pancake", channels.TypePancake, true},
 		{"slack", channels.TypeSlack, true},
+		{"wecom", channels.TypeWeCom, true},
 
 		// Internal / unknown channel types — errors must still surface.
 		{"ws", "ws", false},
